@@ -39,7 +39,7 @@ RF-Clown is an open-source BLE and Bluetooth jammer inspired by similar projects
 2. Encourage exploration of RF vulnerabilities.   
 
 <div align="center"> 
-  <img src="https://github.com/user-attachments/assets/a891e1e9-60d8-46c0-b426-d38d0612c86e" alt="screenshot" width="Auto" height="Auto" />
+  <img src="https://github.com/user-attachments/assets/64df30e1-52b5-4cfb-91c8-b530d30b85e5" alt="screenshot" width="Auto" height="Auto" />
 </div>
 
 <div>&nbsp;</div>
