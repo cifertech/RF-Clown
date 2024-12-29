@@ -63,11 +63,11 @@ RF-Clown is an open-source BLE and Bluetooth jammer inspired by similar projects
   <tr>
     <td style="text-align: center;">
       <img src="https://github.com/user-attachments/assets/48855e3e-e0f5-4176-a162-7127c96188e8" alt="nRFBOX V1" style="width: 600px; border: 1px solid #ccc; border-radius: 5px;">
-      <p style="font-style: italic; font-size: 14px; margin-top: 5px;">nRFBox-v1 based on Arduino</p>
+      <p style="font-style: italic; font-size: 14px; margin-top: 5px;"></p>
     </td>    
     <td style="text-align: center;">
       <img src="https://github.com/user-attachments/assets/b462c974-a695-415e-8d46-79aba6e53ccf" alt="nRFBOX V2" style="width: 600px; border: 1px solid #ccc; border-radius: 5px;">
-      <p style="font-style: italic; font-size: 14px; margin-top: 5px;">nRFBox-v2 based on ESP32</p>
+      <p style="font-style: italic; font-size: 14px; margin-top: 5px;"></p>
     </td>
   </tr>
 </table>
