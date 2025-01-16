@@ -123,17 +123,21 @@ void executeMode() {
 }
 
 void jamBLE() {
-    int randomIndex = random(0, sizeof(ble_channels) / sizeof(ble_channels[0]));
-    int channel = ble_channels[randomIndex];
-    radioVSPI.setChannel(channel);
-    radioHSPI.setChannel(channel);
+    /*int randomIndex = random(0, sizeof(ble_channels) / sizeof(ble_channels[0]));
+    int channel = ble_channels[randomIndex];*/                                                                  //old code
+    int channelHSPI = ble_channels[random(0, sizeof(ble_channels) / sizeof(ble_channels[0]))];
+    int channelVSPI = ble_channels[random(0, sizeof(ble_channels) / sizeof(ble_channels[0]))]; // New code section - now VSPI and HSPI are working on different channels. 
+    radioVSPI.setChannel(channelVSPI);
+    radioHSPI.setChannel(channelHSPI);
 }
 
 void jamBluetooth() {
-    int randomIndex = random(0, sizeof(bluetooth_channels) / sizeof(bluetooth_channels[0]));
-    int channel = bluetooth_channels[randomIndex];
-    radioVSPI.setChannel(channel);
-    radioHSPI.setChannel(channel);
+    /*int randomIndex = random(0, sizeof(bluetooth_channels) / sizeof(bluetooth_channels[0]));
+    int channel = bluetooth_channels[randomIndex];*/                                                            //old code
+    int channelHSPI = bluetooth_channels[random(0, sizeof(bluetooth_channels) / sizeof(bluetooth_channels[0]))];
+    int channelVSPI = bluetooth_channels[random(0, sizeof(bluetooth_channels) / sizeof(bluetooth_channels[0]))]; // New code section - now VSPI and HSPI are working on different channels. 
+    radioVSPI.setChannel(channelVSPI);
+    radioHSPI.setChannel(channelHSPI);
 }
 
 void jamAll() {
