@@ -47,8 +47,9 @@ RF-Clown is an open-source BLE and Bluetooth jammer inspired by similar projects
 <!-- Features -->
 ### 🎯 Features
 
-- **Dual NRF24L01 Configuration**: Utilizes both HSPI and VSPI on the ESP32 for simultaneous BLE and Bluetooth operations.  
-- **Mode Switching**: Easily toggle between BLE, Bluetooth, or combined jamming modes using a single button.  
+- **Triple NRF24** (GT24 Mini modules) for increased coverage and performance  
+- **External antenna** setup: 4× IPEX cables + 8 dBi antennas  
+- **OLED display** + **3 tactile switches** for simple on-device navigation  
 - **NeoPixel Feedback**: LED indicates the current mode (BLE, Bluetooth, or combined).  
 - **Portable Design**: Powered by a lithium battery with a TP4056 charger for convenience.  
 - **Custom PCB**: Includes an onboard CP2102 for programming, LF33 voltage regulator, and other essential components.  
