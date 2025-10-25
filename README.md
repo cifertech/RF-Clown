@@ -39,7 +39,7 @@ RF-Clown is an open-source BLE and Bluetooth jammer inspired by similar projects
 2. Encourage exploration of RF vulnerabilities.   
 
 <div align="center"> 
-  <img src="https://github.com/user-attachments/assets/64df30e1-52b5-4cfb-91c8-b530d30b85e5" alt="screenshot" width="Auto" height="Auto" />
+  <img src="https://github.com/user-attachments/assets/7be8e9b4-07ea-4f39-9cd4-d8588a95a920" alt="screenshot" width="Auto" height="Auto" />
 </div>
 
 <div>&nbsp;</div>
@@ -56,18 +56,17 @@ RF-Clown is an open-source BLE and Bluetooth jammer inspired by similar projects
 
 <div>&nbsp;</div>
 
-<!-- nRFBOX V2 -->
-## :eyes: How the Clown looks
+## :eyes: RF-Clown Versions:
 
 <table>
   <tr>
     <td style="text-align: center;">
-      <img src="https://github.com/user-attachments/assets/48855e3e-e0f5-4176-a162-7127c96188e8" alt="nRFBOX V1" style="width: 600px; border: 1px solid #ccc; border-radius: 5px;">
-      <p style="font-style: italic; font-size: 14px; margin-top: 5px;"></p>
+      <img src="https://github.com/user-attachments/assets/64df30e1-52b5-4cfb-91c8-b530d30b85e5" alt="RF-Clown v1" style="width: 600px; border: 1px solid #ccc; border-radius: 5px;">
+      <p style="font-style: italic; font-size: 14px; margin-top: 5px;">RF-Clown v1</p>
     </td>    
     <td style="text-align: center;">
-      <img src="https://github.com/user-attachments/assets/b462c974-a695-415e-8d46-79aba6e53ccf" alt="nRFBOX V2" style="width: 600px; border: 1px solid #ccc; border-radius: 5px;">
-      <p style="font-style: italic; font-size: 14px; margin-top: 5px;"></p>
+      <img src="https://github.com/user-attachments/assets/92f980b4-5c40-438e-ad00-413e6b39dc6d" alt="RF-Clown v2" style="width: 700px; border: 1px solid #ccc; border-radius: 5px;">
+      <p style="font-style: italic; font-size: 14px; margin-top: 5px;">RF-Clown v2</p>
     </td>
   </tr>
 </table>
