@@ -42,13 +42,13 @@ void configure_Radio(RF24 &radio, const byte *channels, size_t size) {
 
 void initialize_MultiMode() {
   if (RadioA.begin()) {
-    configure_Radio(RadioA, channelGroup_1, sizeof(channelGroup_1));
+    configure_Radio(RadioA, channelGroup_1, CHANNEL_GROUP_1_COUNT);
   }
   if (RadioB.begin()) {
-    configure_Radio(RadioB, channelGroup_2, sizeof(channelGroup_2));
+    configure_Radio(RadioB, channelGroup_2, CHANNEL_GROUP_2_COUNT);
   }
   if (RadioC.begin()) {
-    configure_Radio(RadioC, channelGroup_3, sizeof(channelGroup_3));
+    configure_Radio(RadioC, channelGroup_3, CHANNEL_GROUP_3_COUNT);
   }
 }
 
@@ -356,49 +356,49 @@ void loop() {
     return;
   }
     if (current_Mode == BLE_MODULE) {
-      int randomIndex = random(0, sizeof(ble_channels) / sizeof(ble_channels[0]));
+        int randomIndex = random(0, BLE_CHANNELS_COUNT);
       byte channel = ble_channels[randomIndex];
       RadioA.setChannel(channel);
       RadioB.setChannel(channel);
       RadioC.setChannel(channel);
     } else if (current_Mode == Bluetooth_MODULE) {
-      int randomIndex = random(0, sizeof(bluetooth_channels) / sizeof(bluetooth_channels[0]));
+      int randomIndex = random(0, BLUETOOTH_CHANNELS_COUNT);
       byte channel = bluetooth_channels[randomIndex];
       RadioA.setChannel(channel);
       RadioB.setChannel(channel);
       RadioC.setChannel(channel);
     } else if (current_Mode == WiFi_MODULE) {
-      int randomIndex = random(0, sizeof(WiFi_channels) / sizeof(WiFi_channels[0]));
+      int randomIndex = random(0, WIFI_CHANNELS_COUNT);
       byte channel = WiFi_channels[randomIndex];
       RadioA.setChannel(channel);
       RadioB.setChannel(channel);
       RadioC.setChannel(channel);
     } else if (current_Mode == USB_WIRELESS_MODULE) {
-      int randomIndex = random(0, sizeof(usbWireless_channels) / sizeof(usbWireless_channels[0]));
+      int randomIndex = random(0, USBWIRELESS_CHANNELS_COUNT);
       byte channel = usbWireless_channels[randomIndex];
       RadioA.setChannel(channel);
       RadioB.setChannel(channel);
       RadioC.setChannel(channel);
     } else if (current_Mode == VIDEO_TX_MODULE) {
-      int randomIndex = random(0, sizeof(videoTransmitter_channels) / sizeof(videoTransmitter_channels[0]));
+      int randomIndex = random(0, VIDEO_TX_CHANNELS_COUNT);
       byte channel = videoTransmitter_channels[randomIndex];
       RadioA.setChannel(channel);
       RadioB.setChannel(channel);
       RadioC.setChannel(channel);
     } else if (current_Mode == RC_MODULE) {
-      int randomIndex = random(0, sizeof(rc_channels) / sizeof(rc_channels[0]));
+      int randomIndex = random(0, RC_CHANNELS_COUNT);
       byte channel = rc_channels[randomIndex];
       RadioA.setChannel(channel);
       RadioB.setChannel(channel);
       RadioC.setChannel(channel);
     } else if (current_Mode == ZIGBEE_MODULE) {
-      int randomIndex = random(0, sizeof(zigbee_channels) / sizeof(zigbee_channels[0]));
+      int randomIndex = random(0, ZIGBEE_CHANNELS_COUNT);
       byte channel = zigbee_channels[randomIndex];
       RadioA.setChannel(channel);
       RadioB.setChannel(channel);
       RadioC.setChannel(channel);
     } else if (current_Mode == NRF24_MODULE) {
-      int randomIndex = random(0, sizeof(nrf24_channels) / sizeof(nrf24_channels[0]));
+      int randomIndex = random(0, NRF24_CHANNELS_COUNT);
       byte channel = nrf24_channels[randomIndex];
       RadioA.setChannel(channel);
       RadioB.setChannel(channel);

@@ -23,7 +23,6 @@
 #define NRF_CSN_PIN_C   2  
 
 // Common dependencies
-#include "setting.h"
 #include <Arduino.h>
 #include <U8g2lib.h>
 #include <Wire.h>
@@ -34,10 +33,6 @@
 #include <vector>
 #include <string>
 #include <math.h>
-
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
-
-Adafruit_NeoPixel pixels(1, 14, NEO_GRB + NEO_KHZ800);
 
 // BLE-specific dependencies
 #include <BLEDevice.h>
@@ -55,44 +50,58 @@ Adafruit_NeoPixel pixels(1, 14, NEO_GRB + NEO_KHZ800);
 #include <esp_system.h>
 #include <esp_event.h>
 #include <nvs_flash.h>
-#include <string>
 
 // ESP-specific configurations
 #include <esp_bt.h>
-#include <esp_wifi.h>
 
-// External declarations
+// Forward declarations of global objects (defined in config.cpp)
 extern U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2;
 extern Adafruit_NeoPixel pixels;
 
-static const uint8_t* FONT_SMALL  = u8g2_font_5x8_tf;
-static const uint8_t* FONT_MEDIUM = u8g2_font_6x12_tf;
-static const uint8_t* FONT_ICON_FALLBACK = u8g2_font_open_iconic_thing_2x_t;
+// Fonts (extern pointers to font data)
+extern const uint8_t* FONT_SMALL;
+extern const uint8_t* FONT_MEDIUM;
+extern const uint8_t* FONT_ICON_FALLBACK;
 
 enum OperationMode {WiFi_MODULE, VIDEO_TX_MODULE, RC_MODULE, BLE_MODULE, Bluetooth_MODULE, USB_WIRELESS_MODULE, ZIGBEE_MODULE, NRF24_MODULE};
-OperationMode current_Mode = WiFi_MODULE;
+extern OperationMode current_Mode;
 
 enum Operation {DEACTIVE_MODE, ACTIVE_MODE};
-volatile Operation current = DEACTIVE_MODE;
+extern volatile Operation current;
 
-byte channelGroup_1[] = {2, 5, 8, 11};
-byte channelGroup_2[] = {26, 29, 32, 35};
-byte channelGroup_3[] = {80, 83, 86, 89};
+// Channel groups (defined in config.cpp)
+extern const byte channelGroup_1[4];
+extern const byte channelGroup_2[4];
+extern const byte channelGroup_3[4];
 
-const byte bluetooth_channels[] =        {32, 34, 46, 48, 50, 52, 0, 1, 2, 4, 6, 8, 22, 24, 26, 28, 30, 74, 76, 78, 80};
-const byte ble_channels[]       =        {2, 26, 80};
-const byte WiFi_channels[]      =        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
-const byte usbWireless_channels[] =      {40, 50, 60};
-const byte videoTransmitter_channels[] = {70, 75, 80};
-const byte rc_channels[]        =        {1, 3, 5, 7};
-const byte zigbee_channels[]    =        {11, 15, 20, 25};
-const byte nrf24_channels[]     =        {76, 78, 79};
+extern const byte bluetooth_channels[21];
+extern const byte ble_channels[3];
+extern const byte WiFi_channels[12];
+extern const byte usbWireless_channels[3];
+extern const byte videoTransmitter_channels[3];
+extern const byte rc_channels[4];
+extern const byte zigbee_channels[4];
+extern const byte nrf24_channels[3];
 
-volatile bool ChangeRequested  = false;
-volatile bool ChangeRequested1 = false;
-volatile bool ChangeRequested2 = false;
+// Array sizes for use in other translation units
+#define CHANNEL_GROUP_1_COUNT 4
+#define CHANNEL_GROUP_2_COUNT 4
+#define CHANNEL_GROUP_3_COUNT 4
 
-unsigned long lastPressTime = 0;
-const unsigned long debounceDelay = 200;
+#define BLUETOOTH_CHANNELS_COUNT 21
+#define BLE_CHANNELS_COUNT 3
+#define WIFI_CHANNELS_COUNT 12
+#define USBWIRELESS_CHANNELS_COUNT 3
+#define VIDEO_TX_CHANNELS_COUNT 3
+#define RC_CHANNELS_COUNT 4
+#define ZIGBEE_CHANNELS_COUNT 4
+#define NRF24_CHANNELS_COUNT 3
+
+extern volatile bool ChangeRequested;
+extern volatile bool ChangeRequested1;
+extern volatile bool ChangeRequested2;
+
+extern unsigned long lastPressTime;
+extern const unsigned long debounceDelay;
 
 #endif // CONFIG_H
