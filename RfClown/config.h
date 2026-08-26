@@ -14,6 +14,10 @@
 #define PIN_BTN_R  25
 #define PIN_BTN_S  26
 
+// OLED SSD1306 I2C pins
+#define PIN_OLED_SDA 21
+#define PIN_OLED_SCL 22
+
 // nRF24-specific Pins
 #define NRF_CE_PIN_A    5   
 #define NRF_CSN_PIN_A   17 
@@ -35,7 +39,7 @@
 #include <string>
 #include <math.h>
 
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ PIN_OLED_SCL, /* data=*/ PIN_OLED_SDA);
 
 Adafruit_NeoPixel pixels(1, 14, NEO_GRB + NEO_KHZ800);
 
@@ -74,6 +78,27 @@ OperationMode current_Mode = WiFi_MODULE;
 
 enum Operation {DEACTIVE_MODE, ACTIVE_MODE};
 volatile Operation current = DEACTIVE_MODE;
+
+// MIN  -> RF24_PA_MIN  (-18 dBm)
+// HIGH -> RF24_PA_HIGH (-6  dBm)
+// MAX  -> RF24_PA_MAX  ( 0  dBm)
+// OFF  -> Close TX
+enum PowerLevel { POWER_MIN = 0, POWER_HIGH = 1, POWER_MAX = 2, POWER_OFF = 3 };
+PowerLevel modePowerLevel[8] = {
+  POWER_MAX, POWER_MAX, POWER_MAX, POWER_MAX,
+  POWER_MAX, POWER_MAX, POWER_MAX, POWER_MAX
+};
+inline bool modeSupportsPowerAdjust(OperationMode m) {
+  return (m == WiFi_MODULE || m == BLE_MODULE || m == Bluetooth_MODULE);
+}
+inline bool isPowerOff(PowerLevel p) {
+  return (p == POWER_OFF);
+}
+
+rf24_pa_dbm_e powerLevelToPa(PowerLevel p);
+const char* powerLevelToString(PowerLevel p);
+void setAllRadiosPALevel(rf24_pa_dbm_e pa);
+void applyPowerLevelForMode(OperationMode m);
 
 byte channelGroup_1[] = {2, 5, 8, 11};
 byte channelGroup_2[] = {26, 29, 32, 35};

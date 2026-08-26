@@ -25,8 +25,7 @@ void IRAM_ATTR handleButton1() {
 void IRAM_ATTR handleButton2() {
   unsigned long currentTime = millis();
   if (currentTime - lastPressTime > debounceDelay) {
-    if (current == DEACTIVE_MODE) current = ACTIVE_MODE;
-    else                          current = DEACTIVE_MODE;
+    ChangeRequested2 = true;
     lastPressTime = currentTime;
   }
 }
@@ -40,27 +39,193 @@ void configure_Radio(RF24 &radio, const byte *channels, size_t size) {
   }
 }
 
-void initialize_MultiMode() {
-  if (RadioA.begin()) {
-    configure_Radio(RadioA, channelGroup_1, sizeof(channelGroup_1));
+const char* modeName(OperationMode m) {
+  switch (m) {
+    case WiFi_MODULE:         return "WiFi";
+    case VIDEO_TX_MODULE:     return "VideoTX";
+    case RC_MODULE:           return "RC";
+    case BLE_MODULE:          return "BLE";
+    case Bluetooth_MODULE:    return "Bluetooth";
+    case USB_WIRELESS_MODULE: return "USB-Wireless";
+    case ZIGBEE_MODULE:       return "Zigbee";
+    case NRF24_MODULE:        return "NRF24";
+    default:                  return "Unknown";
   }
-  if (RadioB.begin()) {
-    configure_Radio(RadioB, channelGroup_2, sizeof(channelGroup_2));
+}
+
+void printNrf24Status(byte curChannel) {
+  const char* actStr = (current == ACTIVE_MODE) ? "ACTIVE" : "DEACTIVE";
+  const char* pwrStr = modeSupportsPowerAdjust(current_Mode)
+                       ? powerLevelToString(modePowerLevel[current_Mode])
+                       : "MAX(fixed)";
+  Serial.printf("[NRF24] mode=%s state=%s ch=%u power=%s paA=%d paB=%d paC=%d\n",
+                modeName(current_Mode), actStr, (unsigned)curChannel, pwrStr,
+                (int)RadioA.getPALevel(), (int)RadioB.getPALevel(), (int)RadioC.getPALevel());
+}
+
+extern bool nrf24InitOk;
+
+bool setPowerForCurrentMode(PowerLevel p) {
+  if (!modeSupportsPowerAdjust(current_Mode)) {
+    Serial.printf("[PWR] %s 模式不支持手动调节（固定 MAX）\n", modeName(current_Mode));
+    return false;
   }
-  if (RadioC.begin()) {
-    configure_Radio(RadioC, channelGroup_3, sizeof(channelGroup_3));
+  PowerLevel oldP = modePowerLevel[current_Mode];
+  modePowerLevel[current_Mode] = p;
+  if (current == ACTIVE_MODE) {
+    if (p == POWER_OFF) {
+      RadioA.stopConstCarrier();
+      RadioB.stopConstCarrier();
+      RadioC.stopConstCarrier();
+      const char* ledCol = nrf24InitOk ? "green" : "yellow";
+      setNeoPixelColour(ledCol);
+      Serial.printf("[LED] OFF -> %s (init %s)\n", ledCol, nrf24InitOk ? "OK" : "FAIL");
+    } else {
+      restartCarriers(powerLevelToPa(p));
+      setNeoPixelColour("red");
+    }
+  }
+  Serial.printf("[PWR] %s -> %s%s\n", modeName(current_Mode), powerLevelToString(p),
+                (current == ACTIVE_MODE) ? " (applied)" : " (will apply on ACTIVE)");
+  return true;
+}
+
+void handleSerialCommand() {
+  if (!Serial.available()) return;
+  String line = Serial.readStringUntil('\n');
+  line.trim();
+  line.toUpperCase();
+  if (line.length() == 0) return;
+
+  if (line == "MIN") {
+    setPowerForCurrentMode(POWER_MIN);
+  } else if (line == "HIGH") {
+    setPowerForCurrentMode(POWER_HIGH);
+  } else if (line == "MAX") {
+    setPowerForCurrentMode(POWER_MAX);
+  } else if (line == "OFF") {
+    setPowerForCurrentMode(POWER_OFF);
+  } else if (line == "STATUS" || line == "?") {
+    Serial.println(F("---- NRF24 status ----"));
+    Serial.printf("mode=%s state=%s\n", modeName(current_Mode),
+                  (current == ACTIVE_MODE) ? "ACTIVE" : "DEACTIVE");
+    if (modeSupportsPowerAdjust(current_Mode)) {
+      Serial.printf("power(BLE/BT/WiFi adjustable)=%s\n",
+                    powerLevelToString(modePowerLevel[current_Mode]));
+    } else {
+      Serial.printf("power=%s (this mode not adjustable)\n",
+                    powerLevelToString(modePowerLevel[current_Mode]));
+    }
+    Serial.printf("BLE=%s Bluetooth=%s WiFi=%s\n",
+                  powerLevelToString(modePowerLevel[BLE_MODULE]),
+                  powerLevelToString(modePowerLevel[Bluetooth_MODULE]),
+                  powerLevelToString(modePowerLevel[WiFi_MODULE]));
+    Serial.println(F("----------------------"));
+  } else if (line == "HELP") {
+    Serial.println(F("S键: 可调模式下循环 MAX/HIGH/MIN/OFF; 串口: MIN/HIGH/MAX/OFF/status/help"));
+  } else {
+    Serial.printf("[?] unknown cmd '%s' (try: help)\n", line.c_str());
+  }
+}
+
+bool nrf24InitOk = false;
+
+void initialize_MultiMode(bool startCarrier = true) {
+  bool okA = RadioA.begin();
+  bool okB = RadioB.begin();
+  bool okC = RadioC.begin();
+  if (okA) configureNrf(RadioA);
+  if (okB) configureNrf(RadioB);
+  if (okC) configureNrf(RadioC);
+
+  nrf24InitOk = (okA && okB && okC);
+  if (nrf24InitOk) {
+    Serial.println(F("[NRF24] all radios init OK -> green"));
+    setNeoPixelColour("green");
+  } else {
+    Serial.printf("[NRF24] init fail: A=%d B=%d C=%d -> yellow\n", okA, okB, okC);
+    setNeoPixelColour("yellow");
+  }
+  delay(1000); 
+
+  if (startCarrier) {
+    if (okA) {
+      for (size_t i = 0; i < sizeof(channelGroup_1); i++) {
+        RadioA.setChannel(channelGroup_1[i]);
+        RadioA.startConstCarrier(RF24_PA_MAX, channelGroup_1[i]);
+      }
+    }
+    if (okB) {
+      for (size_t i = 0; i < sizeof(channelGroup_2); i++) {
+        RadioB.setChannel(channelGroup_2[i]);
+        RadioB.startConstCarrier(RF24_PA_MAX, channelGroup_2[i]);
+      }
+    }
+    if (okC) {
+      for (size_t i = 0; i < sizeof(channelGroup_3); i++) {
+        RadioC.setChannel(channelGroup_3[i]);
+        RadioC.startConstCarrier(RF24_PA_MAX, channelGroup_3[i]);
+      }
+    }
+    Serial.println(F("[NRF24] carriers started"));
   }
 }
 
 void initialize_Radios() {
   if (current == ACTIVE_MODE) {
-    initialize_MultiMode();
+    initialize_MultiMode(true); 
+    PowerLevel p = modeSupportsPowerAdjust(current_Mode)
+                   ? modePowerLevel[current_Mode] : POWER_MAX;
+    if (p == POWER_OFF) {
+      RadioA.stopConstCarrier();
+      RadioB.stopConstCarrier();
+      RadioC.stopConstCarrier();
+      const char* ledCol = nrf24InitOk ? "green" : "yellow";
+      setNeoPixelColour(ledCol);
+      Serial.printf("[RF] ACTIVE+OFF -> %s (init %s, not transmitting)\n", ledCol, nrf24InitOk ? "OK" : "FAIL");
+    } else {
+      restartCarriers(powerLevelToPa(p));
+      setNeoPixelColour("red");
+      Serial.printf("[RF] ACTIVE -> red (transmitting) mode=%s power=%s\n",
+                    modeName(current_Mode), powerLevelToString(p));
+    }
   } else if (current == DEACTIVE_MODE) {
     RadioA.powerDown();
     RadioB.powerDown();
     RadioC.powerDown();
     delay(100);
+    const char* ledCol = nrf24InitOk ? "green" : "yellow";
+    setNeoPixelColour(ledCol);
+    Serial.printf("[RF] DEACTIVE -> %s (init %s)\n", ledCol, nrf24InitOk ? "OK" : "FAIL");
   }
+}
+
+void restartCarriers(rf24_pa_dbm_e paLevel) {
+  RadioA.stopConstCarrier();
+  RadioB.stopConstCarrier();
+  RadioC.stopConstCarrier();
+  delay(5);
+  uint8_t chA = RadioA.getChannel();
+  uint8_t chB = RadioB.getChannel();
+  uint8_t chC = RadioC.getChannel();
+  if (chA == 0xFF) chA = (current_Mode == BLE_MODULE) ? ble_channels[0] :
+                          (current_Mode == WiFi_MODULE) ? WiFi_channels[0] :
+                          (current_Mode == Bluetooth_MODULE) ? bluetooth_channels[0] : 76;
+  if (chB == 0xFF) chB = (current_Mode == BLE_MODULE) ? ble_channels[0] :
+                          (current_Mode == WiFi_MODULE) ? WiFi_channels[0] :
+                          (current_Mode == Bluetooth_MODULE) ? bluetooth_channels[0] : 77;
+  if (chC == 0xFF) chC = (current_Mode == BLE_MODULE) ? ble_channels[0] :
+                          (current_Mode == WiFi_MODULE) ? WiFi_channels[0] :
+                          (current_Mode == Bluetooth_MODULE) ? bluetooth_channels[0] : 78;
+  RadioA.powerUp();
+  RadioB.powerUp();
+  RadioC.powerUp();
+  delay(2);
+  RadioA.startConstCarrier(paLevel, chA);
+  RadioB.startConstCarrier(paLevel, chB);
+  RadioC.startConstCarrier(paLevel, chC);
+  Serial.printf("[RF] carrier restarted pa=%d ch=%u/%u/%u\n",
+                (int)paLevel, (unsigned)chA, (unsigned)chB, (unsigned)chC);
 }
 
 static const uint8_t HEADER_H = 12;
@@ -154,8 +319,8 @@ static void drawHeaderBar() {
   u8g2.drawBox(0, 0, W, H);
   u8g2.setFont(FONT_SMALL);
   u8g2.setDrawColor(0);
-  u8g2.drawStr(PAD, TXT_Y, "RF-Clown");
-  const char* ver = "v2.0.0";
+  u8g2.drawStr(PAD, TXT_Y, "RF-ClownV2");
+  const char* ver = "v2.1.0";
   int vw = u8g2.getStrWidth(ver);
   u8g2.drawStr(W - vw - 4, TXT_Y, ver);
   u8g2.setDrawColor(1);
@@ -203,10 +368,16 @@ static void drawCardAtCenter(int centerX, int menuIndex){
   u8g2.print(label);
   bool isThisFocus = (modeFromMenuIndex(menuIndex) == current_Mode);
   bool isActive    = (isThisFocus && current == ACTIVE_MODE);
-  const char* status = isActive ? "ACTIVE" : "DEACTIVE";
+  char statusBuf[16];
+  if (isActive && modeSupportsPowerAdjust(modeFromMenuIndex(menuIndex))) {
+    snprintf(statusBuf, sizeof(statusBuf), "ACTIVE %s",
+             powerLevelToString(modePowerLevel[modeFromMenuIndex(menuIndex)]));
+  } else {
+    snprintf(statusBuf, sizeof(statusBuf), "%s", isActive ? "ACTIVE" : "DEACTIVE");
+  }
   u8g2.setFont(FONT_SMALL);
   u8g2.setCursor(x + 12, y + 16);
-  u8g2.print(status);
+  u8g2.print(statusBuf);
   bool isOn = (modeFromMenuIndex(menuIndex) == current_Mode) && (current == ACTIVE_MODE);
   const int pillW=24, pillH=14;
   const int pillY=(y + ((CARD_H-pillH)/2)) & ~1;
@@ -281,6 +452,77 @@ void update_OLED() {
   renderStaticMenu(focus);
 }
 
+void showPowerLevelToast() {
+  PowerLevel p = modePowerLevel[current_Mode];
+  const char* pwrStr = powerLevelToString(p);
+  u8g2.clearBuffer();
+  drawHeaderBar();
+  u8g2.setFont(FONT_SMALL);
+  const char* label = isPowerOff(p) ? "TRANSMIT" : "POWER";
+  int lw = u8g2.getStrWidth(label);
+  u8g2.setCursor((128 - lw) / 2, HEADER_H + 4);
+  u8g2.print(label);
+  if (isPowerOff(p)) {
+    u8g2.setFont(FONT_MEDIUM);
+    int pw = u8g2.getStrWidth(pwrStr);
+    u8g2.setCursor((128 - pw) / 2, HEADER_H + 22);
+    u8g2.print(pwrStr);
+    u8g2.setFont(FONT_SMALL);
+    u8g2.setCursor(28, HEADER_H + 42);
+    u8g2.print("Press S to MIN");
+  } else {
+    u8g2.setFont(u8g2_font_ncenB14_tr);
+    int pw = u8g2.getStrWidth(pwrStr);
+    u8g2.setCursor((128 - pw) / 2, HEADER_H + 20);
+    u8g2.print(pwrStr);
+    u8g2.setFont(FONT_SMALL);
+  }
+  const char* modeStr = modeName(current_Mode);
+  int mw = u8g2.getStrWidth(modeStr);
+  u8g2.setCursor((128 - mw) / 2, 56);
+  u8g2.print(modeStr);
+  u8g2.sendBuffer();
+  Serial.printf("[PWR] %s -> %s\n", modeStr, pwrStr);
+  delay(700);
+  update_OLED();
+}
+
+bool handleSKeyPress() {
+  if (current == DEACTIVE_MODE) {
+    current = ACTIVE_MODE;
+    return true;
+  }
+  if (modeSupportsPowerAdjust(current_Mode)) {
+    PowerLevel oldP = modePowerLevel[current_Mode];
+    //MAX -> HIGH -> MIN -> OFF -> MAX
+    PowerLevel p;
+    if      (oldP == POWER_MAX)  p = POWER_HIGH;
+    else if (oldP == POWER_HIGH) p = POWER_MIN;
+    else if (oldP == POWER_MIN)  p = POWER_OFF;
+    else                         p = POWER_MAX;
+    modePowerLevel[current_Mode] = p;
+    if (p == POWER_OFF) {
+      RadioA.stopConstCarrier();
+      RadioB.stopConstCarrier();
+      RadioC.stopConstCarrier();
+      const char* ledCol = nrf24InitOk ? "green" : "yellow";
+      setNeoPixelColour(ledCol);
+      Serial.printf("[LED] OFF -> %s (init %s)\n", ledCol, nrf24InitOk ? "OK" : "FAIL");
+    } else if (oldP == POWER_OFF) {
+      restartCarriers(powerLevelToPa(p));
+      setNeoPixelColour("red");
+      Serial.printf("[LED] %s -> red (transmitting)\n", powerLevelToString(p));
+    } else {
+      restartCarriers(powerLevelToPa(p));
+      setNeoPixelColour("red");
+    }
+    showPowerLevelToast();
+    return false;
+  }
+  current = DEACTIVE_MODE;
+  return true;
+}
+
 void menuPrev() {
   int fromIdx = menuIndexFromMode(current_Mode);
   int toIdx   = (fromIdx == 0) ? (kMenuCount - 1) : (fromIdx - 1);
@@ -310,12 +552,48 @@ void checkMode() {
   }
 }
 
+void scanI2C() {
+  Serial.println(F("[I2C] scanning bus 1..127 ..."));
+  int found = 0;
+  for (uint8_t addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    uint8_t err = Wire.endTransmission();
+    if (err == 0) {
+      Serial.printf("[I2C]  -> device found at 0x%02X (%d)\n", addr, addr);
+      found++;
+    }
+  }
+  if (found == 0) {
+    Serial.println(F("[I2C]  !! no device found. "));
+  } else {
+    Serial.printf("[I2C] scan done, %d device(s) found.\n", found);
+  }
+
+  Serial.println(F("[I2C] SSD1306 typical addr = 0x3C (SA0=0) or 0x3D (SA0=1)"));
+}
+
 void setup() {
   Serial.begin(115200);
-  initialize_MultiMode();
-  Wire.begin();
+  delay(150);
+  Serial.println();
+  Serial.println(F("=== RF-Clown boot ==="));
+  Serial.printf("[OLED] SDA=%d  SCL=%d\n", PIN_OLED_SDA, PIN_OLED_SCL);
+
+  pixels.begin();
+  pixels.clear();
+  pixels.show();
+
+  initialize_MultiMode(false);  
+
+  Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
   Wire.setClock(400000);
-  u8g2.begin();
+
+
+  scanI2C();
+
+  Serial.println(F("[OLED] calling u8g2.begin() ..."));
+  uint8_t u8ret = u8g2.begin();
+  Serial.printf("[OLED] u8g2.begin() returned 0x%02X (0x00 = OK)\n", u8ret);
   u8g2.setBusClock(400000);
   u8g2.setFont(FONT_SMALL);
   u8g2.setDrawColor(1);
@@ -333,10 +611,21 @@ void setup() {
   initialize_Radios();
   conf();
   update_OLED();
+  Serial.println(F("[OLED] setup finished."));
+  Serial.println(F("[PWR] S键循环 MAX/HIGH/MIN/OFF (BLE/BT/WiFi); 串口: MIN/HIGH/MAX/OFF/status/help"));
 }
 
 void loop() {
+  handleSerialCommand(); 
   checkMode();
+
+  if (ChangeRequested2) {
+    ChangeRequested2 = false;
+    bool stateChanged = handleSKeyPress();
+    if (!stateChanged) {
+      return;
+    }
+  }
   static Operation     lastActivity = current;
   static OperationMode lastFocus    = current_Mode;
   if (current_Mode != lastFocus) {
@@ -344,6 +633,25 @@ void loop() {
     int toIdx   = menuIndexFromMode(current_Mode);
     animateToMenu(fromIdx, toIdx);
     lastFocus = current_Mode;
+
+    if (current == ACTIVE_MODE) {
+      PowerLevel p = modeSupportsPowerAdjust(current_Mode)
+                     ? modePowerLevel[current_Mode] : POWER_MAX;
+      if (p == POWER_OFF) {
+        RadioA.stopConstCarrier();
+        RadioB.stopConstCarrier();
+        RadioC.stopConstCarrier();
+        const char* ledCol = nrf24InitOk ? "green" : "yellow";
+        setNeoPixelColour(ledCol);
+        Serial.printf("[NRF24] mode switch -> %s, power=OFF, LED=%s\n",
+                      modeName(current_Mode), ledCol);
+      } else {
+        restartCarriers(powerLevelToPa(p));
+        setNeoPixelColour("red");
+        Serial.printf("[NRF24] mode switch -> %s, power=%s, LED=red\n",
+                      modeName(current_Mode), powerLevelToString(p));
+      }
+    }
     return;
   }
   if (current != lastActivity) {
@@ -355,53 +663,48 @@ void loop() {
     lastActivity = current;
     return;
   }
+
+ 
+  byte currentChannel = 0;
+  bool canTransmit = (current == ACTIVE_MODE) &&
+                     (!modeSupportsPowerAdjust(current_Mode) ||
+                      !isPowerOff(modePowerLevel[current_Mode]));
+  if (canTransmit) {
     if (current_Mode == BLE_MODULE) {
       int randomIndex = random(0, sizeof(ble_channels) / sizeof(ble_channels[0]));
-      byte channel = ble_channels[randomIndex];
-      RadioA.setChannel(channel);
-      RadioB.setChannel(channel);
-      RadioC.setChannel(channel);
+      currentChannel = ble_channels[randomIndex];
     } else if (current_Mode == Bluetooth_MODULE) {
       int randomIndex = random(0, sizeof(bluetooth_channels) / sizeof(bluetooth_channels[0]));
-      byte channel = bluetooth_channels[randomIndex];
-      RadioA.setChannel(channel);
-      RadioB.setChannel(channel);
-      RadioC.setChannel(channel);
+      currentChannel = bluetooth_channels[randomIndex];
     } else if (current_Mode == WiFi_MODULE) {
       int randomIndex = random(0, sizeof(WiFi_channels) / sizeof(WiFi_channels[0]));
-      byte channel = WiFi_channels[randomIndex];
-      RadioA.setChannel(channel);
-      RadioB.setChannel(channel);
-      RadioC.setChannel(channel);
+      currentChannel = WiFi_channels[randomIndex];
     } else if (current_Mode == USB_WIRELESS_MODULE) {
       int randomIndex = random(0, sizeof(usbWireless_channels) / sizeof(usbWireless_channels[0]));
-      byte channel = usbWireless_channels[randomIndex];
-      RadioA.setChannel(channel);
-      RadioB.setChannel(channel);
-      RadioC.setChannel(channel);
+      currentChannel = usbWireless_channels[randomIndex];
     } else if (current_Mode == VIDEO_TX_MODULE) {
       int randomIndex = random(0, sizeof(videoTransmitter_channels) / sizeof(videoTransmitter_channels[0]));
-      byte channel = videoTransmitter_channels[randomIndex];
-      RadioA.setChannel(channel);
-      RadioB.setChannel(channel);
-      RadioC.setChannel(channel);
+      currentChannel = videoTransmitter_channels[randomIndex];
     } else if (current_Mode == RC_MODULE) {
       int randomIndex = random(0, sizeof(rc_channels) / sizeof(rc_channels[0]));
-      byte channel = rc_channels[randomIndex];
-      RadioA.setChannel(channel);
-      RadioB.setChannel(channel);
-      RadioC.setChannel(channel);
+      currentChannel = rc_channels[randomIndex];
     } else if (current_Mode == ZIGBEE_MODULE) {
       int randomIndex = random(0, sizeof(zigbee_channels) / sizeof(zigbee_channels[0]));
-      byte channel = zigbee_channels[randomIndex];
-      RadioA.setChannel(channel);
-      RadioB.setChannel(channel);
-      RadioC.setChannel(channel);
+      currentChannel = zigbee_channels[randomIndex];
     } else if (current_Mode == NRF24_MODULE) {
       int randomIndex = random(0, sizeof(nrf24_channels) / sizeof(nrf24_channels[0]));
-      byte channel = nrf24_channels[randomIndex];
-      RadioA.setChannel(channel);
-      RadioB.setChannel(channel);
-      RadioC.setChannel(channel);
+      currentChannel = nrf24_channels[randomIndex];
     }
+    RadioA.setChannel(currentChannel);
+    RadioB.setChannel(currentChannel);
+    RadioC.setChannel(currentChannel);
+  }
+
+  static unsigned long lastStatusMs = 0;
+  const unsigned long STATUS_INTERVAL_MS = 1000;
+  unsigned long nowMs = millis();
+  if (current == ACTIVE_MODE && (nowMs - lastStatusMs >= STATUS_INTERVAL_MS)) {
+    lastStatusMs = nowMs;
+    printNrf24Status(currentChannel);
+  }
 }
