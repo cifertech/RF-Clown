@@ -48,8 +48,8 @@ void CenteredStr(uint8_t screenWidth, uint8_t y, const uint8_t* asciiArray, size
 void conf();
 
 const uint8_t txt_n[]   = {82, 102, 67, 108, 111, 119, 110};                  
-const uint8_t txt_c[]   = {98, 121, 32, 67, 105, 102, 101, 114, 84, 101, 99, 104}; 
-const uint8_t txt_v[]   = {118, 50, 46, 48, 46, 48}; 
+const uint8_t txt_c[]   = {98, 121, 32, 67, 105, 114, 107, 101, 116}; 
+const uint8_t txt_v[]   = {118, 50, 46, 49, 46, 48}; 
 
 const unsigned char cred [] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 

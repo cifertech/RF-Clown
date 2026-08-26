@@ -40,6 +40,50 @@ void configureNrf(RF24 &radio) {
   radio.setCRCLength(RF24_CRC_DISABLED);
 }
 
+rf24_pa_dbm_e powerLevelToPa(PowerLevel p) {
+  switch (p) {
+    case POWER_MIN:  return RF24_PA_MIN;
+    case POWER_HIGH: return RF24_PA_HIGH;
+    case POWER_OFF:  return RF24_PA_MIN;
+    case POWER_MAX:
+    default:         return RF24_PA_MAX;
+  }
+}
+
+const char* powerLevelToString(PowerLevel p) {
+  switch (p) {
+    case POWER_MIN:  return "MIN";
+    case POWER_HIGH: return "HIGH";
+    case POWER_OFF:  return "OFF";
+    case POWER_MAX:
+    default:         return "MAX";
+  }
+}
+
+void setAllRadiosPALevel(rf24_pa_dbm_e pa) {
+  RadioA.setPALevel(pa, true);
+  RadioB.setPALevel(pa, true);
+  RadioC.setPALevel(pa, true);
+}
+
+void applyPowerLevelForMode(OperationMode m) {
+  if (!modeSupportsPowerAdjust(m)) {
+    setAllRadiosPALevel(RF24_PA_MAX);
+    return;
+  }
+  PowerLevel p = modePowerLevel[m];
+  if (p == POWER_OFF) {
+    RadioA.powerDown();
+    RadioB.powerDown();
+    RadioC.powerDown();
+  } else {
+    RadioA.powerUp();
+    RadioB.powerUp();
+    RadioC.powerUp();
+    setAllRadiosPALevel(powerLevelToPa(p));
+  }
+}
+
 void setupRadioA() {
   configureNrf(RadioA);
 }
